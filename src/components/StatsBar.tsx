@@ -31,19 +31,19 @@ export function StatsBar({
         {pendingCount > 0 && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
             <Clock className="w-3 h-3" />
-            {pendingCount} pending
+            {pendingCount} 等待中
           </div>
         )}
         {processingCount > 0 && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-processing/10 text-processing rounded-full text-xs font-medium">
             <Loader2 className="w-3 h-3 animate-spin" />
-            {processingCount} transforming
+            {processingCount} 转换中
           </div>
         )}
         {failedCount > 0 && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-error/10 text-error rounded-full text-xs font-medium">
             <AlertTriangle className="w-3 h-3" />
-            {failedCount} failed
+            {failedCount} 失败
           </div>
         )}
       </div>
@@ -53,7 +53,7 @@ export function StatsBar({
         {completedCount > 0 && (
           <span className="flex items-center gap-1.5 text-success">
             <Check className="w-3 h-3" />
-            {completedCount} complete
+            {completedCount} 已完成
           </span>
         )}
         {hasCompletedOrFailed && !hasProcessing && onClear && (
@@ -64,7 +64,7 @@ export function StatsBar({
               className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
             >
               <Trash2 className="w-3 h-3" />
-              Clear
+              清空
             </button>
           </>
         )}

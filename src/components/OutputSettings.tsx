@@ -21,7 +21,7 @@ export function OutputSettings({
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium">Size:</label>
+        <label className="text-sm font-medium">尺寸：</label>
         <div className="flex rounded-lg border border-border overflow-hidden">
           <button
             onClick={() => onOutputSizeChange('1K')}
@@ -58,7 +58,7 @@ export function OutputSettings({
 
       {onTemperatureChange && (
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium">Temp:</label>
+          <label className="text-sm font-medium">温度：</label>
           <div className="flex rounded-lg border border-border overflow-hidden">
             {TEMPERATURES.map((temp, idx) => (
               <button

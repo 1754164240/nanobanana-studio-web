@@ -37,36 +37,62 @@ function writeEnvFile(env: Record<string, string>): void {
 export async function GET() {
   const env = parseEnvFile();
   const apiKey = env.GEMINI_API_KEY || '';
+  const baseUrl = env.GEMINI_BASE_URL || '';
+  const model = env.GEMINI_MODEL || '';
 
   if (apiKey) {
     // Return masked version
     const masked = apiKey.slice(0, 4) + '...' + apiKey.slice(-4);
-    return NextResponse.json({ hasKey: true, masked });
+    return NextResponse.json({ hasKey: true, masked, baseUrl, model });
   }
 
-  return NextResponse.json({ hasKey: false, masked: null });
+  return NextResponse.json({ hasKey: false, masked: null, baseUrl, model });
 }
 
-// POST - Save API key
 export async function POST(request: Request) {
   try {
-    const { apiKey } = await request.json();
+    const { apiKey, baseUrl, model } = await request.json();
 
-    if (!apiKey || typeof apiKey !== 'string') {
+    if (apiKey !== undefined && typeof apiKey !== 'string') {
       return NextResponse.json({ error: 'Invalid API key' }, { status: 400 });
     }
 
-    // Basic validation - Gemini keys start with 'AI'
-    if (!apiKey.startsWith('AI')) {
-      return NextResponse.json({ error: 'Invalid Gemini API key format' }, { status: 400 });
+    if (baseUrl !== undefined && typeof baseUrl !== 'string') {
+      return NextResponse.json({ error: 'Invalid Base URL' }, { status: 400 });
+    }
+
+    if (model !== undefined && typeof model !== 'string') {
+      return NextResponse.json({ error: 'Invalid Model' }, { status: 400 });
     }
 
     const env = parseEnvFile();
-    env.GEMINI_API_KEY = apiKey;
+    
+    if (apiKey !== undefined) {
+      env.GEMINI_API_KEY = apiKey;
+      process.env.GEMINI_API_KEY = apiKey;
+    }
+    
+    if (baseUrl !== undefined) {
+      if (baseUrl.trim() === '') {
+        delete env.GEMINI_BASE_URL;
+        delete process.env.GEMINI_BASE_URL;
+      } else {
+        env.GEMINI_BASE_URL = baseUrl.trim();
+        process.env.GEMINI_BASE_URL = baseUrl.trim();
+      }
+    }
+    
+    if (model !== undefined) {
+      if (model.trim() === '') {
+        delete env.GEMINI_MODEL;
+        delete process.env.GEMINI_MODEL;
+      } else {
+        env.GEMINI_MODEL = model.trim();
+        process.env.GEMINI_MODEL = model.trim();
+      }
+    }
     writeEnvFile(env);
 
-    // Update process.env for current session
-    process.env.GEMINI_API_KEY = apiKey;
 
     return NextResponse.json({ success: true });
   } catch {
@@ -74,13 +100,16 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE - Remove API key
 export async function DELETE() {
   try {
     const env = parseEnvFile();
     delete env.GEMINI_API_KEY;
+    delete env.GEMINI_BASE_URL;
+    delete env.GEMINI_MODEL;
     writeEnvFile(env);
     delete process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_BASE_URL;
+    delete process.env.GEMINI_MODEL;
 
     return NextResponse.json({ success: true });
   } catch {

@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Key, Check, X, Loader2, Eye, EyeOff } from 'lucide-react';
+import { apiUrl } from '@/lib/basePath';
 
 export function ApiKeyInput() {
   const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [model, setModel] = useState('');
   const [masked, setMasked] = useState<string | null>(null);
   const [hasKey, setHasKey] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -19,12 +22,14 @@ export function ApiKeyInput() {
 
   const checkKey = async () => {
     try {
-      const res = await fetch('/api/config');
+      const res = await fetch(apiUrl('/api/config'));
       const data = await res.json();
       setHasKey(data.hasKey);
       setMasked(data.masked);
+      setBaseUrl(data.baseUrl || '');
+      setModel(data.model || '');
     } catch {
-      setError('Failed to check API key status');
+      setError('检查 API 密钥状态失败');
     } finally {
       setLoading(false);
     }
@@ -37,16 +42,20 @@ export function ApiKeyInput() {
     setError(null);
 
     try {
-      const res = await fetch('/api/config', {
+      const res = await fetch(apiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
+        body: JSON.stringify({ 
+          apiKey: apiKey.trim() || undefined, 
+          baseUrl: baseUrl.trim() || '',
+          model: model.trim() || ''
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Failed to save API key');
+        setError(data.error || '保存 API 密钥失败');
         return;
       }
 
@@ -55,7 +64,7 @@ export function ApiKeyInput() {
       setApiKey('');
       setEditing(false);
     } catch {
-      setError('Failed to save API key');
+      setError('保存 API 密钥失败');
     } finally {
       setSaving(false);
     }
@@ -66,18 +75,20 @@ export function ApiKeyInput() {
     setError(null);
 
     try {
-      const res = await fetch('/api/config', { method: 'DELETE' });
+      const res = await fetch(apiUrl('/api/config'), { method: 'DELETE' });
 
       if (!res.ok) {
-        setError('Failed to remove API key');
+        setError('删除 API 密钥失败');
         return;
       }
 
       setHasKey(false);
       setMasked(null);
+      setBaseUrl('');
+      setModel('');
       setEditing(false);
     } catch {
-      setError('Failed to remove API key');
+      setError('删除 API 密钥失败');
     } finally {
       setSaving(false);
     }
@@ -87,7 +98,7 @@ export function ApiKeyInput() {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Checking API key...</span>
+        <span>正在检查 API 密钥...</span>
       </div>
     );
   }
@@ -98,25 +109,41 @@ export function ApiKeyInput() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-2 bg-success/10 text-success rounded-lg">
             <Check className="w-4 h-4" />
-            <span className="text-sm font-medium">API Key Configured</span>
+            <span className="text-sm font-medium">API 密钥已配置</span>
           </div>
           <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
             {masked}
           </code>
         </div>
+        {baseUrl && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground mr-1">自定义 URL:</span>
+            <code className="px-2 py-1 bg-muted rounded text-sm font-mono truncate max-w-[200px]" title={baseUrl}>
+              {baseUrl}
+            </code>
+          </div>
+        )}
+        {model && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground mr-1">自定义模型:</span>
+            <code className="px-2 py-1 bg-muted rounded text-sm font-mono truncate max-w-[200px]" title={model}>
+              {model}
+            </code>
+          </div>
+        )}
         <div className="flex gap-2">
           <button
             onClick={() => setEditing(true)}
             className="px-3 py-1.5 text-sm bg-muted hover:bg-border rounded-lg transition-colors"
           >
-            Change Key
+            更换密钥
           </button>
           <button
             onClick={removeKey}
             disabled={saving}
             className="px-3 py-1.5 text-sm text-error hover:bg-error/10 rounded-lg transition-colors"
           >
-            {saving ? 'Removing...' : 'Remove'}
+            {saving ? '删除中...' : '删除'}
           </button>
         </div>
       </div>
@@ -135,7 +162,7 @@ export function ApiKeyInput() {
               setApiKey(e.target.value);
               setError(null);
             }}
-            placeholder="Enter your Gemini API key"
+            placeholder="输入您的 Gemini API 密钥"
             className="w-full pl-10 pr-10 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
           />
           <button
@@ -146,12 +173,38 @@ export function ApiKeyInput() {
             {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
+      </div>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={baseUrl}
+            onChange={(e) => {
+              setBaseUrl(e.target.value);
+              setError(null);
+            }}
+            placeholder="自定义 Base URL（可选，代理地址）"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+          />
+        </div>
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={model}
+            onChange={(e) => {
+              setModel(e.target.value);
+              setError(null);
+            }}
+            placeholder="自定义模型（可选，覆盖默认）"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+          />
+        </div>
         <button
           onClick={saveKey}
-          disabled={!apiKey.trim() || saving}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={saving}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '保存'}
         </button>
         {editing && (
           <button
@@ -160,7 +213,7 @@ export function ApiKeyInput() {
               setApiKey('');
               setError(null);
             }}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -170,14 +223,14 @@ export function ApiKeyInput() {
         <p className="text-sm text-error">{error}</p>
       )}
       <p className="text-xs text-muted-foreground">
-        Get your API key from{' '}
+        从{' '}
         <a
           href="https://aistudio.google.com/apikey"
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline"
         >
-          Google AI Studio
+          Google AI Studio 获取密钥
         </a>
       </p>
     </div>

@@ -7,7 +7,8 @@ import { ImageToImageForm } from '@/components/ImageToImageForm';
 import { ImageGrid, type ImageResult } from '@/components/ImageGrid';
 import { SettingsModal } from '@/components/SettingsModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Settings, AlertCircle, Banana, Loader2, X, RotateCcw, Maximize, Thermometer, Copy, Check, Coffee } from 'lucide-react';
+import { apiUrl } from '@/lib/basePath';
+import { Settings, AlertCircle, Banana, Loader2, X, RotateCcw, Maximize, Thermometer, Copy, Check } from 'lucide-react';
 
 type Mode = 'text-to-image' | 'image-to-image';
 type OutputSize = '1K' | '2K' | '4K';
@@ -93,14 +94,14 @@ function CompletedJobCard({
             {completedItems.map((item) => (
             <a
               key={item.id}
-              href={`/api/download/${item.outputImagePath?.split('/').pop()}`}
+              href={apiUrl(`/api/download/${item.outputImagePath?.split('/').pop()}`)}
               target="_blank"
               rel="noopener noreferrer"
               className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted group flex-shrink-0"
             >
               <img
-                src={`/api/download/${item.outputImagePath?.split('/').pop()}`}
-                alt={item.inputPrompt || 'Generated image'}
+                src={apiUrl(`/api/download/${item.outputImagePath?.split('/').pop()}`)}
+                alt={item.inputPrompt || '生成的图像'}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -136,7 +137,7 @@ function CompletedJobCard({
             {itemCount > 1 && (
               <>
                 <span>·</span>
-                <span>{itemCount} imgs</span>
+                <span>{itemCount} 张</span>
               </>
             )}
             <span>·</span>
@@ -148,14 +149,14 @@ function CompletedJobCard({
           <button
             onClick={copyPrompt}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            title="Copy prompt"
+            title="复制提示词"
           >
             {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
           </button>
           <button
             onClick={onClear}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            title="Remove"
+            title="移除"
           >
             <X className="w-4 h-4" />
           </button>
@@ -200,13 +201,13 @@ export default function Home() {
 
   // Check API key status and load all jobs on mount
   useEffect(() => {
-    fetch('/api/config')
+    fetch(apiUrl('/api/config'))
       .then((res) => res.json())
       .then((data) => setHasApiKey(data.hasKey))
       .catch(() => setHasApiKey(false));
 
     // Load all jobs from database
-    fetch('/api/jobs?status=all')
+    fetch(apiUrl('/api/jobs?status=all'))
       .then((res) => res.json())
       .then((data) => {
         if (data.jobs && Array.isArray(data.jobs)) {
@@ -218,7 +219,7 @@ export default function Home() {
             data.jobs
               .filter((j: Job) => j.mode === 'text-to-image' && j.status !== 'cancelled')
               .map(async (job: Job) => {
-                const itemsRes = await fetch(`/api/jobs/${job.id}`);
+                const itemsRes = await fetch(apiUrl(`/api/jobs/${job.id}`));
                 const itemsData = await itemsRes.json();
                 return { job, items: itemsData.items || [] };
               })
@@ -243,7 +244,7 @@ export default function Home() {
             data.jobs
               .filter((j: Job) => j.mode === 'image-to-image' && j.status !== 'cancelled')
               .map(async (job: Job) => {
-                const itemsRes = await fetch(`/api/jobs/${job.id}`);
+                const itemsRes = await fetch(apiUrl(`/api/jobs/${job.id}`));
                 const itemsData = await itemsRes.json();
                 return { job, items: itemsData.items || [] };
               })
@@ -282,7 +283,7 @@ export default function Home() {
     const interval = setInterval(async () => {
       for (const { job } of activeJobs) {
         try {
-          const res = await fetch(`/api/jobs/${job.id}`);
+          const res = await fetch(apiUrl(`/api/jobs/${job.id}`));
           if (res.ok) {
             const data = await res.json();
             setT2iJobs((prev) => {
@@ -322,7 +323,7 @@ export default function Home() {
     const interval = setInterval(async () => {
       for (const { job } of activeJobs) {
         try {
-          const res = await fetch(`/api/jobs/${job.id}`);
+          const res = await fetch(apiUrl(`/api/jobs/${job.id}`));
           if (res.ok) {
             const data = await res.json();
             setI2iJobs((prev) => {
@@ -352,7 +353,7 @@ export default function Home() {
   const handleTextToImageSubmit = useCallback(
     async (data: { prompts: string[]; outputSize: OutputSize; aspectRatio: string; temperature: Temperature }) => {
       try {
-        const res = await fetch('/api/jobs', {
+        const res = await fetch(apiUrl('/api/jobs'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -383,10 +384,10 @@ export default function Home() {
             return newMap;
           });
         } else {
-          setError(responseData.error || 'Failed to create job');
+          setError(responseData.error || '创建任务失败');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to connect to server');
+        setError(err instanceof Error ? err.message : '无法连接到服务器');
       }
     },
     []
@@ -401,7 +402,7 @@ export default function Home() {
       aspectRatio: AspectRatio;
     }) => {
       try {
-        const res = await fetch('/api/jobs', {
+        const res = await fetch(apiUrl('/api/jobs'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -433,10 +434,10 @@ export default function Home() {
             return newMap;
           });
         } else {
-          setError(responseData.error || 'Failed to create job');
+          setError(responseData.error || '创建任务失败');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to connect to server');
+        setError(err instanceof Error ? err.message : '无法连接到服务器');
       }
     },
     []
@@ -445,7 +446,7 @@ export default function Home() {
   const clearT2iJob = useCallback(async (jobId: string) => {
     // Delete from DB
     try {
-      await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      await fetch(apiUrl(`/api/jobs/${jobId}`), { method: 'DELETE' });
     } catch {}
     // Remove from local state
     setT2iJobs((prev) => {
@@ -458,14 +459,14 @@ export default function Home() {
   const clearAllT2iJobs = useCallback(async () => {
     // Delete all from DB
     const jobs = Array.from(t2iJobs.keys());
-    await Promise.all(jobs.map(id => fetch(`/api/jobs/${id}`, { method: 'DELETE' }).catch(() => {})));
+    await Promise.all(jobs.map(id => fetch(apiUrl(`/api/jobs/${id}`), { method: 'DELETE' }).catch(() => {})));
     setT2iJobs(new Map());
   }, [t2iJobs]);
 
   const clearI2iJob = useCallback(async (jobId: string) => {
     // Delete from DB
     try {
-      await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      await fetch(apiUrl(`/api/jobs/${jobId}`), { method: 'DELETE' });
     } catch {}
     // Remove from local state
     setI2iJobs((prev) => {
@@ -478,13 +479,13 @@ export default function Home() {
   const clearAllI2iJobs = useCallback(async () => {
     // Delete all from DB
     const jobs = Array.from(i2iJobs.keys());
-    await Promise.all(jobs.map(id => fetch(`/api/jobs/${id}`, { method: 'DELETE' }).catch(() => {})));
+    await Promise.all(jobs.map(id => fetch(apiUrl(`/api/jobs/${id}`), { method: 'DELETE' }).catch(() => {})));
     setI2iJobs(new Map());
   }, [i2iJobs]);
 
   const cancelJob = useCallback(async (jobId: string, mode: 'text-to-image' | 'image-to-image') => {
     try {
-      const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/jobs/${jobId}`), { method: 'DELETE' });
       if (res.ok) {
         // Remove from local state
         if (mode === 'text-to-image') {
@@ -494,10 +495,10 @@ export default function Home() {
         }
       } else {
         const data = await res.json();
-        setError(data.error || 'Failed to cancel job');
+        setError(data.error || '取消任务失败');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel job');
+      setError(err instanceof Error ? err.message : '取消任务失败');
     }
   }, [clearT2iJob, clearI2iJob]);
 
@@ -511,7 +512,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Nanobanana</h1>
-            <p className="text-sm text-muted-foreground">Batch API Image Generator</p>
+            <p className="text-sm text-muted-foreground">图像生成器</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -519,7 +520,7 @@ export default function Home() {
           <button
             onClick={() => setSettingsOpen(true)}
             className="p-2 text-muted-foreground hover:text-foreground bg-muted hover:bg-border rounded-lg transition-colors"
-            title="Settings"
+            title="设置"
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -545,16 +546,16 @@ export default function Home() {
         <div className="flex items-center gap-3 p-4 bg-warning/10 border border-warning/20 rounded-lg">
           <AlertCircle className="w-5 h-5 text-warning flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium">API Key Required</p>
+            <p className="text-sm font-medium">需要 API 密钥</p>
             <p className="text-xs text-muted-foreground">
-              Configure your Gemini API key in settings to start generating images.
+              请在设置中配置您的 Gemini API 密钥以开始生成图像。
             </p>
           </div>
           <button
             onClick={() => setSettingsOpen(true)}
             className="px-3 py-1.5 text-sm bg-warning/20 hover:bg-warning/30 text-warning rounded-lg transition-colors"
           >
-            Configure
+            配置
           </button>
         </div>
       )}
@@ -567,7 +568,7 @@ export default function Home() {
         <div className="space-y-6">
           {/* Instructions */}
           <div className="text-sm text-muted-foreground">
-            <p>Describe the image you want and press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Enter</kbd> to generate. Batch API processes asynchronously at 50% reduced cost.</p>
+            <p>描述您想要的图像，然后按 <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Enter</kbd> 生成。</p>
           </div>
 
           <TextToImageForm
@@ -592,24 +593,24 @@ export default function Home() {
             return (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-foreground font-medium">{t2iJobs.size} generation{t2iJobs.size !== 1 ? 's' : ''}</span>
+                  <span className="text-foreground font-medium">{t2iJobs.size} 个生成任务</span>
                   <span className="text-muted-foreground">·</span>
                   {processingCount > 0 && (
                     <>
                       <span className="flex items-center gap-1.5 text-processing">
                         <span className="w-1.5 h-1.5 bg-processing rounded-full animate-pulse" />
-                        {processingCount} processing
+                        {processingCount} 处理中
                       </span>
                       <span className="text-muted-foreground">·</span>
                     </>
                   )}
                   {completedCount > 0 && (
-                    <span className="text-muted-foreground">{completedCount} complete</span>
+                    <span className="text-muted-foreground">{completedCount} 已完成</span>
                   )}
                   {failedCount > 0 && (
                     <>
                       <span className="text-muted-foreground">·</span>
-                      <span className="text-error">{failedCount} failed</span>
+                      <span className="text-error">{failedCount} 失败</span>
                     </>
                   )}
                   {totalCost > 0 && (
@@ -623,7 +624,7 @@ export default function Home() {
                   onClick={clearAllT2iJobs}
                   className="px-2.5 py-1 text-sm text-muted-foreground hover:text-foreground bg-muted hover:bg-border rounded-lg transition-colors"
                 >
-                  Clear all
+                  清空全部
                 </button>
               </div>
             );
@@ -645,13 +646,13 @@ export default function Home() {
                         <p className="text-base text-foreground truncate">
                           &quot;{job.prompt}&quot;
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Starting...</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">启动中...</p>
                       </div>
                       {/* Cancel button */}
                       <button
                         onClick={() => cancelJob(job.id, 'text-to-image')}
                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-                        title="Cancel"
+                        title="取消"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -675,14 +676,14 @@ export default function Home() {
                           &quot;{job.prompt}&quot;
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Generating{job.total_items > 1 ? ` ${job.total_items} images` : ''}...
+                          生成中{job.total_items > 1 ? `（${job.total_items} 张图像）` : ''}...
                         </p>
                       </div>
                       {/* Cancel button */}
                       <button
                         onClick={() => cancelJob(job.id, 'text-to-image')}
                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-                        title="Cancel"
+                        title="取消"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -712,8 +713,8 @@ export default function Home() {
                         </p>
                         <p className="text-xs text-error mt-0.5 truncate">
                           {job.total_items > 1
-                            ? `${job.failed_items}/${job.total_items} failed`
-                            : items.find(i => i.error)?.error || 'Generation failed'}
+                            ? `${job.failed_items}/${job.total_items} 失败`
+                            : items.find(i => i.error)?.error || '生成失败'}
                         </p>
                       </div>
                       {/* Actions */}
@@ -721,14 +722,14 @@ export default function Home() {
                         <button
                           onClick={() => clearT2iJob(job.id)}
                           className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors"
-                          title="Retry"
+                          title="重试"
                         >
                           <RotateCcw className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => clearT2iJob(job.id)}
                           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                          title="Remove"
+                          title="移除"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -743,9 +744,8 @@ export default function Home() {
         <div className="space-y-6">
           {/* Instructions */}
           <div className="text-sm text-muted-foreground space-y-1">
-            <p>Upload multiple images and describe how to transform them. Try prompts like:</p>
-            <p className="text-xs">Style transfer (watercolor, oil painting, anime) • Background changes • Color adjustments • Add or remove objects • Upscale and enhance</p>
-            <p className="text-xs">Batch API processes asynchronously at 50% reduced cost.</p>
+            <p>上传多张图像并描述您希望如何转换它们。尝试以下提示词：</p>
+            <p className="text-xs">风格迁移（水彩、油画、动漫）• 更换背景 • 调整颜色 • 添加或移除物体 • 放大和增强</p>
           </div>
 
           <ImageToImageForm
@@ -770,24 +770,24 @@ export default function Home() {
             return (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-foreground font-medium">{i2iJobs.size} transformation{i2iJobs.size !== 1 ? 's' : ''}</span>
+                  <span className="text-foreground font-medium">{i2iJobs.size} 个转换任务</span>
                   <span className="text-muted-foreground">·</span>
                   {processingCount > 0 && (
                     <>
                       <span className="flex items-center gap-1.5 text-processing">
                         <span className="w-1.5 h-1.5 bg-processing rounded-full animate-pulse" />
-                        {processingCount} processing
+                        {processingCount} 处理中
                       </span>
                       <span className="text-muted-foreground">·</span>
                     </>
                   )}
                   {completedCount > 0 && (
-                    <span className="text-muted-foreground">{completedCount} complete</span>
+                    <span className="text-muted-foreground">{completedCount} 已完成</span>
                   )}
                   {failedCount > 0 && (
                     <>
                       <span className="text-muted-foreground">·</span>
-                      <span className="text-error">{failedCount} failed</span>
+                      <span className="text-error">{failedCount} 失败</span>
                     </>
                   )}
                   {totalCost > 0 && (
@@ -801,7 +801,7 @@ export default function Home() {
                   onClick={clearAllI2iJobs}
                   className="px-2.5 py-1 text-sm text-muted-foreground hover:text-foreground bg-muted hover:bg-border rounded-lg transition-colors"
                 >
-                  Clear all
+                  清空全部
                 </button>
               </div>
             );
@@ -823,13 +823,13 @@ export default function Home() {
                         <p className="text-base text-foreground truncate">
                           &quot;{job.prompt}&quot;
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Starting...</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">启动中...</p>
                       </div>
                       {/* Cancel button */}
                       <button
                         onClick={() => cancelJob(job.id, 'image-to-image')}
                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-                        title="Cancel"
+                        title="取消"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -851,14 +851,14 @@ export default function Home() {
                           &quot;{job.prompt}&quot;
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Transforming{job.total_items > 1 ? ` ${job.total_items} images` : ''}...
+                          转换中{job.total_items > 1 ? `（${job.total_items} 张图像）` : ''}...
                         </p>
                       </div>
                       {/* Cancel button */}
                       <button
                         onClick={() => cancelJob(job.id, 'image-to-image')}
                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-                        title="Cancel"
+                        title="取消"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -886,22 +886,22 @@ export default function Home() {
                         </p>
                         <p className="text-xs text-error mt-0.5 truncate">
                           {job.total_items > 1
-                            ? `${job.failed_items}/${job.total_items} failed`
-                            : items.find(i => i.error)?.error || 'Transformation failed'}
+                            ? `${job.failed_items}/${job.total_items} 失败`
+                            : items.find(i => i.error)?.error || '转换失败'}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={() => clearI2iJob(job.id)}
                           className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors"
-                          title="Retry"
+                          title="重试"
                         >
                           <RotateCcw className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => clearI2iJob(job.id)}
                           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                          title="Remove"
+                          title="移除"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -918,9 +918,9 @@ export default function Home() {
       {/* API info footer */}
       <div className="text-xs text-muted-foreground text-center space-y-0.5 pt-4">
         <p>
-          <code className="bg-muted px-1.5 py-0.5 rounded">gemini-3-pro-image-preview</code>
+          <code className="bg-muted px-1.5 py-0.5 rounded">gemini-3.1-flash-image</code>
         </p>
-        <p>Batch API • 50% reduced cost</p>
+        <p>实时生成引擎 • 同步推理</p>
       </div>
 
       {/* Settings Modal */}
@@ -930,20 +930,7 @@ export default function Home() {
         onApiKeyChange={setHasApiKey}
       />
 
-      {/* Footer */}
-      <footer className="mt-12 pt-6 border-t border-border">
-        <div className="flex items-center justify-center">
-          <a
-            href="https://buymeacoffee.com/aaronkwhite"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Coffee className="w-4 h-4" />
-            Buy me a coffee
-          </a>
-        </div>
-      </footer>
+
     </div>
   );
 }

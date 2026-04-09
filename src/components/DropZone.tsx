@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { CloudUpload } from 'lucide-react';
+import { apiUrl } from '@/lib/basePath';
 
 interface UploadedFile {
   id: string;
@@ -26,12 +27,12 @@ export function DropZone({ files, onFilesChange, disabled = false, maxFiles = 10
     const filesToUpload = Array.from(fileList).filter(f => f.type.startsWith('image/'));
 
     if (filesToUpload.length === 0) {
-      setError('Please select image files (JPEG, PNG, WebP, GIF)');
+      setError('请选择图片文件（JPEG, PNG, WebP, GIF）');
       return;
     }
 
     if (files.length + filesToUpload.length > maxFiles) {
-      setError(`Maximum ${maxFiles} files allowed`);
+      setError(`最多允许 ${maxFiles} 个文件`);
       return;
     }
 
@@ -44,7 +45,7 @@ export function DropZone({ files, onFilesChange, disabled = false, maxFiles = 10
         formData.append('files', file);
       }
 
-      const res = await fetch('/api/upload', {
+      const res = await fetch(apiUrl('/api/upload'), {
         method: 'POST',
         body: formData,
       });
@@ -52,7 +53,7 @@ export function DropZone({ files, onFilesChange, disabled = false, maxFiles = 10
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Failed to upload files');
+        setError(data.error || '上传文件失败');
         return;
       }
 
@@ -67,7 +68,7 @@ export function DropZone({ files, onFilesChange, disabled = false, maxFiles = 10
 
       onFilesChange([...files, ...newFiles]);
     } catch {
-      setError('Failed to upload files');
+      setError('上传文件失败');
     } finally {
       setUploading(false);
     }
@@ -134,9 +135,9 @@ export function DropZone({ files, onFilesChange, disabled = false, maxFiles = 10
         />
         <CloudUpload className={`w-8 h-8 mx-auto mb-2 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
         <p className="text-sm font-medium">
-          {uploading ? 'Uploading...' : isDragOver ? 'Drop images here' : 'Drag & drop images here'}
+          {uploading ? '上传中...' : isDragOver ? '将图片拖放到此处' : '将图片拖放到此处'}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
+        <p className="text-xs text-muted-foreground mt-1">或点击浏览</p>
       </div>
 
       {/* Error message */}

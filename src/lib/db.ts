@@ -78,8 +78,6 @@ export interface Job {
   output_size: OutputSize;
   temperature: Temperature;
   aspect_ratio: AspectRatio;
-  batch_job_name: string | null;
-  batch_temp_file: string | null;
   total_items: number;
   completed_items: number;
   failed_items: number;
@@ -198,13 +196,6 @@ export function updateJobStatus(id: string, status: JobStatus): void {
   `).run(status, id);
 }
 
-export function updateJobBatchInfo(id: string, batchJobName: string, batchTempFile: string): void {
-  const database = getDb();
-  database.prepare(`
-    UPDATE jobs SET batch_job_name = ?, batch_temp_file = ?, status = 'processing', updated_at = datetime('now')
-    WHERE id = ?
-  `).run(batchJobName, batchTempFile, id);
-}
 
 export function updateJobProgress(id: string, completed: number, failed: number): void {
   const database = getDb();

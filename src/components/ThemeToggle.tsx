@@ -6,9 +6,9 @@ import { Sun, Moon, Monitor, ChevronDown, Check } from 'lucide-react';
 type Theme = 'light' | 'dark' | 'system';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: '浅色', icon: Sun },
+  { value: 'dark', label: '深色', icon: Moon },
+  { value: 'system', label: '系统', icon: Monitor },
 ];
 
 export function ThemeToggle() {
@@ -58,7 +58,7 @@ export function ThemeToggle() {
     return (
       <button
         className="p-2 rounded-lg bg-muted hover:bg-border transition-colors"
-        aria-label="Toggle theme"
+        aria-label="切换主题"
       >
         <div className="w-5 h-5" />
       </button>

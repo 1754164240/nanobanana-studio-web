@@ -8,7 +8,7 @@ interface ImageItemProps {
 }
 
 export function ImageItem({ image }: ImageItemProps) {
-  const getFilename = (path: string) => path.split('/').pop() || 'image.png';
+  const getFilename = (path: string) => path.split(/[/\\]/).pop() || 'image.png';
 
   return (
     <div className="relative aspect-square bg-card border border-border rounded-lg overflow-hidden group">

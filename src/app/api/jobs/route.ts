@@ -7,7 +7,6 @@ import {
   getJobs,
   getJobItems,
   updateJobStatus,
-  updateJobBatchInfo,
   updateJobProgress,
   updateJobItem,
   type OutputSize,
@@ -15,8 +14,8 @@ import {
   type AspectRatio,
 } from '@/lib/db';
 import {
-  submitTextToImageBatch,
-  submitImageToImageBatch,
+  generateTextToImage,
+  generateImageToImage,
 } from '@/lib/gemini';
 
 const RESULTS_DIR = path.join(process.cwd(), 'data', 'results');
@@ -40,7 +39,12 @@ export async function GET(request: Request) {
       );
 
       if (activeJob) {
-        const items = getJobItems(activeJob.id);
+        const items = getJobItems(activeJob.id).map(item => {
+          if (item.output_image_path) {
+            item.output_image_path = item.output_image_path.split(/[/\\]/).pop() || item.output_image_path;
+          }
+          return item;
+        });
         return NextResponse.json({ job: activeJob, items });
       }
       return NextResponse.json({ job: null, items: [] });
@@ -104,8 +108,8 @@ async function handleTextToImage(body: {
     prompts: validPrompts,
   });
 
-  // Submit batch job to Gemini
-  submitTextToImageBatchJob(job.id, items, outputSize || '1K', aspectRatio || '1:1', temperature ?? 1);
+  // Submit direct job
+  processTextToImageJob(job.id, items, outputSize || '1K', aspectRatio || '1:1', temperature ?? 1);
 
   return NextResponse.json({ job, items });
 }
@@ -138,56 +142,74 @@ async function handleImageToImage(body: {
     imagePaths: validPaths,
   });
 
-  // Submit batch job to Gemini
-  submitImageToImageBatchJob(job.id, items, prompt, outputSize || '1K', aspectRatio || '1:1', temperature ?? 1);
+  // Submit direct job
+  processImageToImageJob(job.id, items, prompt, outputSize || '1K', aspectRatio || '1:1', temperature ?? 1);
 
   return NextResponse.json({ job, items });
 }
 
-// Submit text-to-image batch (runs in background)
-async function submitTextToImageBatchJob(
+// Process text-to-image job (runs inline sequence)
+async function processTextToImageJob(
   jobId: string,
   items: Array<{ id: string; input_prompt: string | null }>,
   outputSize: OutputSize,
   aspectRatio: AspectRatio,
   temperature: number
 ) {
-  try {
-    // Mark all items as processing
-    for (const item of items) {
-      updateJobItem(item.id, { status: 'processing' });
-    }
-
-    // Prepare batch items
-    const batchItems = items.map((item) => ({
-      id: item.id,
-      prompt: item.input_prompt || '',
-    }));
-
-    // Submit to Gemini Batch API
-    const { jobName, tempFilePath } = await submitTextToImageBatch(batchItems, outputSize, aspectRatio, temperature);
-
-    // Store batch info in database
-    updateJobBatchInfo(jobId, jobName, tempFilePath);
-
-    console.log(`T2I batch submitted for job ${jobId}: ${jobName}`);
-  } catch (error) {
-    console.error('Failed to submit T2I batch:', error);
-    updateJobStatus(jobId, 'failed');
-
-    // Mark all items as failed
-    for (const item of items) {
-      updateJobItem(item.id, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Batch submission failed',
-      });
-    }
-    updateJobProgress(jobId, 0, items.length);
+  // Mark all items as processing
+  for (const item of items) {
+    updateJobItem(item.id, { status: 'processing' });
   }
+
+  updateJobStatus(jobId, 'processing');
+  console.log(`T2I direct job started for job ${jobId}`);
+
+  // Run in background pseudo-queue so POST API can respond immediately
+  setTimeout(async () => {
+    let completed = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      if (!item.input_prompt) {
+        updateJobItem(item.id, { status: 'failed', error: 'Missing prompt' });
+        failed++;
+        updateJobProgress(jobId, completed, failed);
+        continue;
+      }
+
+      try {
+        const base64Data = await generateTextToImage(
+          item.input_prompt,
+          outputSize,
+          aspectRatio,
+          temperature
+        );
+
+        const filename = `${item.id}.png`;
+        const filepath = path.join(RESULTS_DIR, filename);
+        fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+
+        updateJobItem(item.id, {
+          status: 'completed',
+          output_image_path: filename,
+        });
+        completed++;
+      } catch (error) {
+        console.error(`T2I item ${item.id} failed:`, error);
+        updateJobItem(item.id, {
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Generation failed',
+        });
+        failed++;
+      }
+      updateJobProgress(jobId, completed, failed);
+    }
+    updateJobStatus(jobId, failed === items.length ? 'failed' : 'completed');
+  }, 0);
 }
 
-// Submit image-to-image batch (runs in background)
-async function submitImageToImageBatchJob(
+// Process image-to-image job (runs inline sequence)
+async function processImageToImageJob(
   jobId: string,
   items: Array<{ id: string; input_image_path: string | null }>,
   prompt: string,
@@ -195,36 +217,54 @@ async function submitImageToImageBatchJob(
   aspectRatio: AspectRatio,
   temperature: number
 ) {
-  try {
-    // Mark all items as processing
-    for (const item of items) {
-      updateJobItem(item.id, { status: 'processing' });
-    }
-
-    // Prepare batch files
-    const files = items.map((item) => ({
-      id: item.id,
-      path: item.input_image_path || '',
-    }));
-
-    // Submit to Gemini Batch API
-    const { jobName, tempFilePath } = await submitImageToImageBatch(files, prompt, outputSize, aspectRatio, temperature);
-
-    // Store batch info in database
-    updateJobBatchInfo(jobId, jobName, tempFilePath);
-
-    console.log(`I2I batch submitted for job ${jobId}: ${jobName}`);
-  } catch (error) {
-    console.error('Failed to submit I2I batch:', error);
-    updateJobStatus(jobId, 'failed');
-
-    // Mark all items as failed
-    for (const item of items) {
-      updateJobItem(item.id, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Batch submission failed',
-      });
-    }
-    updateJobProgress(jobId, 0, items.length);
+  // Mark all items as processing
+  for (const item of items) {
+    updateJobItem(item.id, { status: 'processing' });
   }
+
+  updateJobStatus(jobId, 'processing');
+  console.log(`I2I direct job started for job ${jobId}`);
+
+  setTimeout(async () => {
+    let completed = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      if (!item.input_image_path) {
+        updateJobItem(item.id, { status: 'failed', error: 'Missing image path' });
+        failed++;
+        updateJobProgress(jobId, completed, failed);
+        continue;
+      }
+
+      try {
+        const base64Data = await generateImageToImage(
+          item.input_image_path,
+          prompt,
+          outputSize,
+          aspectRatio,
+          temperature
+        );
+
+        const filename = `${item.id}.png`;
+        const filepath = path.join(RESULTS_DIR, filename);
+        fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+
+        updateJobItem(item.id, {
+          status: 'completed',
+          output_image_path: filename,
+        });
+        completed++;
+      } catch (error) {
+        console.error(`I2I item ${item.id} failed:`, error);
+        updateJobItem(item.id, {
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Generation failed',
+        });
+        failed++;
+      }
+      updateJobProgress(jobId, completed, failed);
+    }
+    updateJobStatus(jobId, failed === items.length ? 'failed' : 'completed');
+  }, 0);
 }

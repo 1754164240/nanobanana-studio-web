@@ -21,7 +21,7 @@ export function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
         }`}
       >
         <ImagePlus className="w-4 h-4" />
-        <span>Text to Image</span>
+        <span>文生图</span>
       </button>
       <button
         onClick={() => onModeChange('image-to-image')}
@@ -32,7 +32,7 @@ export function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
         }`}
       >
         <Wand2 className="w-4 h-4" />
-        <span>Image to Image</span>
+        <span>图生图</span>
       </button>
     </div>
   );

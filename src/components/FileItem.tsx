@@ -29,7 +29,7 @@ export function FileItem({ file, onRemove }: FileItemProps) {
     failed: 'bg-error/20 text-error border border-error/30',
   };
 
-  const getFilename = (path: string) => path.split('/').pop() || 'image.png';
+  const getFilename = (path: string) => path.split(/[/\\]/).pop() || 'image.png';
 
   return (
     <div className="flex items-center gap-4 p-4 bg-card rounded-lg border border-border">

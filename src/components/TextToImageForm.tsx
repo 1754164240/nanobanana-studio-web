@@ -14,11 +14,11 @@ const SIZE_OPTIONS: { value: OutputSize; label: string; price: string }[] = [
 ];
 
 const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string }[] = [
-  { value: '1:1', label: 'Square' },
-  { value: '16:9', label: 'Wide' },
-  { value: '9:16', label: 'Portrait' },
-  { value: '4:3', label: 'Landscape' },
-  { value: '3:4', label: 'Tall' },
+  { value: '1:1', label: '正方形' },
+  { value: '16:9', label: '横屏' },
+  { value: '9:16', label: '竖屏' },
+  { value: '4:3', label: '横向' },
+  { value: '3:4', label: '竖向' },
 ];
 const TEMPERATURES: Temperature[] = [0, 0.5, 1, 1.5, 2];
 
@@ -92,12 +92,12 @@ export function TextToImageForm({ onSubmit, disabled = false }: TextToImageFormP
       {queue.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Queue ({queue.length})</span>
+            <span className="text-sm text-muted-foreground">队列 ({queue.length})</span>
             <button
               onClick={() => setQueue([])}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Clear
+              清空
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -127,7 +127,7 @@ export function TextToImageForm({ onSubmit, disabled = false }: TextToImageFormP
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Describe the image you want to generate..."
+          placeholder="描述您想要生成的图像..."
           disabled={disabled}
           rows={3}
           className="w-full px-4 pt-4 pb-2 bg-transparent resize-none focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-foreground placeholder:text-placeholder"
@@ -141,7 +141,7 @@ export function TextToImageForm({ onSubmit, disabled = false }: TextToImageFormP
               <button
                 onClick={() => setActiveMenu(activeMenu === 'size' ? null : 'size')}
                 className="flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                title="Output resolution"
+                title="输出分辨率"
               >
                 <Maximize className="w-3.5 h-3.5" />
                 <span className="font-medium">{outputSize}</span>
@@ -173,7 +173,7 @@ export function TextToImageForm({ onSubmit, disabled = false }: TextToImageFormP
               <button
                 onClick={() => setActiveMenu(activeMenu === 'aspect' ? null : 'aspect')}
                 className="flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                title="Image dimensions"
+                title="图像尺寸"
               >
                 <RectangleHorizontal className="w-3.5 h-3.5" />
                 <span className="font-medium">{ASPECT_RATIO_OPTIONS.find(o => o.value === aspectRatio)?.label}</span>
@@ -205,7 +205,7 @@ export function TextToImageForm({ onSubmit, disabled = false }: TextToImageFormP
               <button
                 onClick={() => setActiveMenu(activeMenu === 'temp' ? null : 'temp')}
                 className="flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                title="Creativity (0=precise, 2=creative)"
+                title="创意度 (0=精确, 2=创意)"
               >
                 <Thermometer className="w-3.5 h-3.5" />
                 <span className="font-medium">{temperature}</span>

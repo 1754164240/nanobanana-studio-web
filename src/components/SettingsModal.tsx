@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Settings, Key, Info, Loader2, Eye, EyeOff, ExternalLink, PencilLine, Coffee } from 'lucide-react';
+import { X, Settings, Key, Info, Loader2, Eye, EyeOff, ExternalLink, PencilLine } from 'lucide-react';
+import { apiUrl, assetUrl } from '@/lib/basePath';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -9,13 +10,15 @@ interface SettingsModalProps {
   onApiKeyChange?: (hasKey: boolean) => void;
 }
 
-type Tab = 'api' | 'about' | 'support';
+type Tab = 'api' | 'about';
 
 export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('api');
 
   // API Key state
   const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [model, setModel] = useState('');
   const [masked, setMasked] = useState<string | null>(null);
   const [hasKey, setHasKey] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,12 +35,14 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
 
   const checkKey = async () => {
     try {
-      const res = await fetch('/api/config');
+      const res = await fetch(apiUrl('/api/config'));
       const data = await res.json();
       setHasKey(data.hasKey);
       setMasked(data.masked);
+      setBaseUrl(data.baseUrl || '');
+      setModel(data.model || '');
     } catch {
-      setError('Failed to check API key status');
+      setError('检查 API 密钥状态失败');
     } finally {
       setLoading(false);
     }
@@ -50,16 +55,20 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
     setError(null);
 
     try {
-      const res = await fetch('/api/config', {
+      const res = await fetch(apiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
+        body: JSON.stringify({ 
+          apiKey: apiKey.trim() || undefined, 
+          baseUrl: baseUrl.trim() || '',
+          model: model.trim() || ''
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Failed to save API key');
+        setError(data.error || '保存 API 密钥失败');
         return;
       }
 
@@ -69,7 +78,7 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
       setEditing(false);
       onApiKeyChange?.(true);
     } catch {
-      setError('Failed to save API key');
+      setError('保存 API 密钥失败');
     } finally {
       setSaving(false);
     }
@@ -80,15 +89,17 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
     setError(null);
 
     try {
-      const res = await fetch('/api/config', { method: 'DELETE' });
+      const res = await fetch(apiUrl('/api/config'), { method: 'DELETE' });
 
       if (!res.ok) {
-        setError('Failed to remove API key');
+        setError('删除 API 密钥失败');
         return;
       }
 
       setHasKey(false);
       setMasked(null);
+      setBaseUrl('');
+      setModel('');
       setEditing(false);
       onApiKeyChange?.(false);
     } catch {
@@ -114,7 +125,7 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Settings</h2>
+            <h2 className="text-lg font-semibold">设置</h2>
           </div>
           <button
             onClick={onClose}
@@ -135,7 +146,7 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
             }`}
           >
             <Key className="w-4 h-4" />
-            API Key
+            API 密钥
           </button>
           <button
             onClick={() => setActiveTab('about')}
@@ -146,19 +157,9 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
             }`}
           >
             <Info className="w-4 h-4" />
-            About
+            关于
           </button>
-          <button
-            onClick={() => setActiveTab('support')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'support'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Coffee className="w-4 h-4" />
-            Support
-          </button>
+
         </div>
 
         {/* Content */}
@@ -168,13 +169,23 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
               {loading ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Checking API key...</span>
+                  <span>正在检查 API 密钥...</span>
                 </div>
               ) : hasKey && !editing ? (
                 <div className="flex items-center gap-3">
                   <code className="px-4 py-1.5 bg-muted rounded text-sm font-mono">
                     <span className="text-muted-foreground">GEMINI_API_KEY=</span>{masked}
                   </code>
+                  {baseUrl && (
+                    <code className="px-4 py-1.5 bg-muted rounded text-sm font-mono truncate max-w-[200px]" title={baseUrl}>
+                      <span className="text-muted-foreground">URL=</span>{baseUrl}
+                    </code>
+                  )}
+                  {model && (
+                    <code className="px-4 py-1.5 bg-muted rounded text-sm font-mono truncate max-w-[200px]" title={model}>
+                      <span className="text-muted-foreground">模型=</span>{model}
+                    </code>
+                  )}
                   <div className="ml-auto flex items-center gap-1">
                     <button
                       onClick={() => setEditing(true)}
@@ -205,7 +216,7 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
                           setApiKey(e.target.value);
                           setError(null);
                         }}
-                        placeholder="Enter your Gemini API key"
+                        placeholder="输入您的 Gemini API 密钥"
                         autoComplete="off"
                         className="w-full pl-10 pr-10 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                       />
@@ -217,12 +228,40 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
                         {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={baseUrl}
+                        onChange={(e) => {
+                          setBaseUrl(e.target.value);
+                          setError(null);
+                        }}
+                        placeholder="自定义 Base URL（可选，代理地址）"
+                        autoComplete="off"
+                        className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={model}
+                        onChange={(e) => {
+                          setModel(e.target.value);
+                          setError(null);
+                        }}
+                        placeholder="自定义模型（可选）"
+                        autoComplete="off"
+                        className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                      />
+                    </div>
                     <button
                       onClick={saveKey}
-                      disabled={!apiKey.trim() || saving}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      disabled={saving}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                     >
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '保存'}
                     </button>
                     {editing && (
                       <button
@@ -243,17 +282,17 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
 
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  Enter your API key above, or set <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">GEMINI_API_KEY</code> in your shell environment.
+                  在上方输入您的 API 密钥，或在 Shell 环境中设置 <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">GEMINI_API_KEY</code>。
                 </p>
                 <p>
-                  Get your API key from{' '}
+                  从{' '}
                   <a
                     href="https://aistudio.google.com/apikey"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-primary hover:underline"
                   >
-                    Google AI Studio
+                    Google AI Studio 获取密钥
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </p>
@@ -266,29 +305,29 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
 
               <div className="space-y-3 text-sm">
                 <p>
-                  A lightweight, self-hosted image generation client for Google&apos;s Gemini 3 (Nano Banana) image generation Batch API.
-                  BYOK (Bring Your Own Key) - your API key stays on your machine.
+                  轻量级、自托管的 Google Gemini 3 (Nano Banana) 图像生成客户端。
+                  BYOK（自带密钥）- 您的 API 密钥始终保存在本地。
                 </p>
 
                 <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                  <p className="font-medium">Features:</p>
+                  <p className="font-medium">功能特性：</p>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>Text-to-Image: Generate images from prompts</li>
-                    <li>Image-to-Image: Transform existing images</li>
-                    <li>1K, 2K, and 4K output resolutions</li>
-                    <li>Multiple aspect ratios</li>
+                    <li>文生图：根据提示词生成图像</li>
+                    <li>图生图：转换现有图像</li>
+                    <li>1K、2K 和 4K 输出分辨率</li>
+                    <li>多种宽高比</li>
                   </ul>
-                  <p className="font-medium">API &amp; Model:</p>
+                  <p className="font-medium">API 和 模型：</p>
                   <p className="text-muted-foreground">
-                    Gemini 3 Pro Image (<code className="text-xs bg-background px-1 py-0.5 rounded">gemini-3-pro-image-preview</code>)
+                    Gemini 3.1 Flash Image (<code className="text-xs bg-background px-1 py-0.5 rounded">gemini-3.1-flash-image</code>)
                   </p>
                   <p className="text-muted-foreground">
-                    Uses the Batch API for async processing at 50% cost.
+                    直接调用同步推理 API，快速生成结果。
                   </p>
                 </div>
 
                 <div className="p-3 bg-muted/50 rounded-lg space-y-1">
-                  <p className="font-medium">Documentation:</p>
+                  <p className="font-medium">文档：</p>
                   <div className="flex flex-col gap-1">
                     <a
                       href="https://ai.google.dev/gemini-api/docs/image-generation"
@@ -296,16 +335,7 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary hover:underline"
                     >
-                      Image Generation Guide
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                    <a
-                      href="https://ai.google.dev/gemini-api/docs/batch-api"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
-                    >
-                      Batch API Documentation
+                      图像生成指南
                       <ExternalLink className="w-3 h-3" />
                     </a>
                     <a
@@ -314,7 +344,7 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary hover:underline"
                     >
-                      Pricing Details
+                      价格详情
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -322,35 +352,12 @@ export function SettingsModal({ isOpen, onClose, onApiKeyChange }: SettingsModal
               </div>
 
               <div className="pt-2 border-t border-border text-xs text-muted-foreground">
-                <p>Made with Next.js, Tailwind CSS, and SQLite</p>
+                <p>使用 Next.js、Tailwind CSS 和 SQLite 构建</p>
               </div>
             </div>
           )}
 
-          {activeTab === 'support' && (
-            <div className="space-y-4 text-center">
-              <img
-                src="/bmc_qr.png"
-                alt="Buy Me a Coffee QR Code"
-                className="w-32 h-32 mx-auto rounded-lg"
-              />
-              <div>
-                <h3 className="text-lg font-medium">Support this project</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  If you find Nanobanana Batch API Image Generator useful,<br />consider buying me a coffee!
-                </p>
-              </div>
-              <a
-                href="https://buymeacoffee.com/aaronkwhite"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#FFDD00] text-black font-medium rounded-lg hover:bg-[#FFDD00]/90 transition-colors"
-              >
-                <Coffee className="w-5 h-5" />
-                Buy me a coffee
-              </a>
-            </div>
-          )}
+
         </div>
       </div>
     </div>

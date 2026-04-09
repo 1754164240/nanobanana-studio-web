@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PasswordGate } from "@/components/PasswordGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nanobanana - Gemini Image Generator",
-  description: "BYOK image generation with Gemini Imagen API",
+  title: "Nanobanana - Gemini 图像生成器",
+  description: "自带密钥的 Gemini Imagen API 图像生成工具",
 };
 
 export default function RootLayout({
@@ -23,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -42,7 +43,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
         <main className="max-w-5xl mx-auto px-4 py-8">
-          {children}
+          <PasswordGate>
+            {children}
+          </PasswordGate>
         </main>
       </body>
     </html>
